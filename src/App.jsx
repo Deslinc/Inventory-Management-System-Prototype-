@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useRef, useCallback } from 'react';
 import { AgGridReact } from 'ag-grid-react';
 import { INVENTORY_DATA, WEEK_LABELS } from './data';
+import * as XLSX from 'xlsx';
 
 // ── Pill renderer for AG Grid cells ──────────────────────────
 function PillRenderer({ value, colDef }) {
@@ -194,12 +195,31 @@ export default function App() {
     filter: true,
   }), []);
 
-  // ── Export to CSV ───────────────────────────────────────────
-  const exportCsv = useCallback(() => {
-    gridRef.current?.api.exportDataAsCsv({
-      fileName: `inventory_export_${new Date().toISOString().slice(0, 10)}.csv`,
+  // ── Export to Excel (.xlsx) using SheetJS ─────────────────────
+  const exportExcel = useCallback(() => {
+    if (!filtered || !filtered.length) return;
+    // Use columnDefs to build header order and fields
+    const cols = columnDefs.filter(cd => cd.field || cd.headerName);
+    const headers = cols.map(cd => cd.headerName || cd.field);
+    const fields = cols.map(cd => cd.field || null);
+
+    const dataForSheet = filtered.map(row => {
+      const out = {};
+      cols.forEach((cd, i) => {
+        const header = headers[i];
+        const field = fields[i];
+        if (field) out[header] = row[field];
+        else if (cd.valueGetter) out[header] = cd.valueGetter({ data: row });
+        else out[header] = '';
+      });
+      return out;
     });
-  }, []);
+
+    const ws = XLSX.utils.json_to_sheet(dataForSheet);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Inventory');
+    XLSX.writeFile(wb, `inventory_export_${new Date().toISOString().slice(0,10)}.xlsx`);
+  }, [filtered, columnDefs]);
   // ── Row click → detail panel ──────────────────────────────────
   const onRowClicked = useCallback((e) => {
     if (!e.data) return;   // ignore group header rows
@@ -273,7 +293,7 @@ export default function App() {
           <span className="topbar-logo">Inventory Management System</span>
         </div>
         <div className="topbar-right">
-          <button className="btn btn-primary" onClick={exportCsv}>⬇ Export CSV</button>
+          <button className="btn btn-primary" onClick={exportExcel}>⬇ Export Excel</button>
         </div>
       </div>
 
