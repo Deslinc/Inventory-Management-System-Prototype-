@@ -1,5 +1,5 @@
-# Inventory Management System
-Built with React + AG Grid Enterprise + Node.js + PostgreSQL
+# Inventory Management System Prototype
+Built with React + AG Grid Community for now + Node.js + PostgreSQL
 
 ## Quick start (development)
 
