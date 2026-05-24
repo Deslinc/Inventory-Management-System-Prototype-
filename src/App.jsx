@@ -43,7 +43,11 @@ function getStockStatus(params) {
 
 // ── Price formatter ───────────────────────────────────────────
 function priceFormatter(params) {
-  return params.value != null ? `GH₵ ${params.value.toFixed(2)}` : '';
+  // Ensure we have a numeric value — groups/aggregations can provide non-number values
+  if (params == null || params.value == null) return '';
+  const n = Number(params.value);
+  if (Number.isNaN(n)) return String(params.value);
+  return `GH₵ ${n.toFixed(2)}`;
 }
 
 // ── OH cell style (red/amber/normal) ─────────────────────────
@@ -64,7 +68,6 @@ export default function App() {
   const [filterStatus, setFilterStatus] = useState('');
   const [filterFood, setFilterFood]     = useState('');
   const [filterStock, setFilterStock]   = useState('');
-  const [grouped, setGrouped]     = useState(true);
   const [selectedRow, setSelectedRow] = useState(null);
 
   // ── Derived data ─────────────────────────────────────────────
@@ -122,8 +125,6 @@ export default function App() {
       headerName: 'Category',
       width: 160,
       filter: 'agSetColumnFilter',
-      rowGroup: grouped,
-      hide: grouped,
     },
     {
       field: 'subcat',
@@ -185,7 +186,7 @@ export default function App() {
       cellRenderer: PillRenderer,
       filter: 'agSetColumnFilter',
     },
-  ], [grouped]);
+  ], []);
 
   const defaultColDef = useMemo(() => ({
     sortable: true,
@@ -193,14 +194,12 @@ export default function App() {
     filter: true,
   }), []);
 
-  // ── Export to Excel ───────────────────────────────────────────
-  const exportExcel = useCallback(() => {
-    gridRef.current?.api.exportDataAsExcel({
-      fileName: `inventory_export_${new Date().toISOString().slice(0, 10)}.xlsx`,
-      sheetName: 'Inventory',
+  // ── Export to CSV ───────────────────────────────────────────
+  const exportCsv = useCallback(() => {
+    gridRef.current?.api.exportDataAsCsv({
+      fileName: `inventory_export_${new Date().toISOString().slice(0, 10)}.csv`,
     });
   }, []);
-
   // ── Row click → detail panel ──────────────────────────────────
   const onRowClicked = useCallback((e) => {
     if (!e.data) return;   // ignore group header rows
@@ -221,7 +220,7 @@ export default function App() {
           <div><div className="detail-field-label">Vendor</div><div className="detail-field-value">{row.vendor}</div></div>
           <div><div className="detail-field-label">Category</div><div className="detail-field-value">{row.cat}</div></div>
           <div><div className="detail-field-label">Food type</div><div className="detail-field-value">{row.food}</div></div>
-          <div><div className="detail-field-label">Sales price</div><div className="detail-field-value">GH₵ {row.price.toFixed(2)}</div></div>
+          <div><div className="detail-field-label">Sales price</div><div className="detail-field-value">{row.price != null ? `GH₵ ${Number(row.price).toFixed(2)}` : ''}</div></div>
           <div>
             <div className="detail-field-label">On hand</div>
             <div className="detail-field-value" style={{ color: row.oh === 0 ? '#dc2626' : row.oh < 10 ? '#d97706' : '#16a34a' }}>
@@ -274,7 +273,7 @@ export default function App() {
           <span className="topbar-logo">Inventory Management System</span>
         </div>
         <div className="topbar-right">
-          <button className="btn btn-primary" onClick={exportExcel}>⬇ Export to Excel</button>
+          <button className="btn btn-primary" onClick={exportCsv}>⬇ Export CSV</button>
         </div>
       </div>
 
@@ -340,12 +339,6 @@ export default function App() {
                 <option value="ok">In stock</option>
               </select>
               <div className="spacer" />
-              <button
-                className={`btn${grouped ? ' btn-primary' : ''}`}
-                onClick={() => setGrouped(g => !g)}
-              >
-                ☰ Group by category
-              </button>
               <span style={{ fontSize: 12, color: '#78716c' }}>{filtered.length} items</span>
             </div>
 
@@ -362,12 +355,9 @@ export default function App() {
                   rowData={filtered}
                   columnDefs={columnDefs}
                   defaultColDef={defaultColDef}
-                  rowGroupPanelShow="always"
-                  sideBar={true}
                   pagination={true}
                   paginationPageSize={20}
                   rowSelection="multiple"
-                  groupDefaultExpanded={1}
                   animateRows={true}
                   onRowClicked={onRowClicked}
                 />
