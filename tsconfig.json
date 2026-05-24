@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "skipLibCheck": true,
+    "allowJs": true,
+    "checkJs": false,
+    "target": "es5",
+    "module": "commonjs",
+    "baseUrl": "."
+  },
+  "exclude": [
+    "node_modules",
+    "build",
+    "dist"
+  ]
+}
